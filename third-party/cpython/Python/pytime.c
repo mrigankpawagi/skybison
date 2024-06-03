@@ -28,6 +28,24 @@
 #define NS_TO_MS (1000 * 1000)
 #define NS_TO_US (1000)
 
+#if SIZEOF_TIME_T == SIZEOF_LONG_LONG
+#  define PY_TIME_T_MAX LLONG_MAX
+#  define PY_TIME_T_MIN LLONG_MIN
+#elif SIZEOF_TIME_T == SIZEOF_LONG
+#  define PY_TIME_T_MAX LONG_MAX
+#  define PY_TIME_T_MIN LONG_MIN
+#else
+#  error "unsupported time_t size"
+#endif
+
+#if PY_TIME_T_MAX + PY_TIME_T_MIN != -1
+#  error "time_t is not a two's complement integer type"
+#endif
+
+#if _PyTime_MIN + _PyTime_MAX != -1
+#  error "_PyTime_t is not a two's complement integer type"
+#endif
+
 static void
 error_time_t_overflow(void)
 {
@@ -152,8 +170,8 @@ _PyTime_DoubleToDenominator(double d, time_t *sec, long *numerator,
     assert(0.0 <= floatpart && floatpart < denominator);
 
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
-    if (!_Py_InIntegralTypeRange(time_t, intpart)) {
+// #pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
+    if (!((double)PY_TIME_T_MIN <= intpart && intpart < -(double)PY_TIME_T_MIN)) {
 #pragma clang diagnostic pop
         error_time_t_overflow();
         return -1;
@@ -208,8 +226,8 @@ _PyTime_ObjectToTime_t(PyObject *obj, time_t *sec, _PyTime_round_t round)
         (void)modf(d, &intpart);
 
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
-        if (!_Py_InIntegralTypeRange(time_t, intpart)) {
+// #pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
+        if (!((double)PY_TIME_T_MIN <= intpart && intpart < -(double)PY_TIME_T_MIN)) {
 #pragma clang diagnostic pop
             error_time_t_overflow();
             return -1;
@@ -396,8 +414,8 @@ _PyTime_FromDouble(_PyTime_t *t, double value, _PyTime_round_t round,
     d = _PyTime_Round(d, round);
 
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
-    if (!_Py_InIntegralTypeRange(_PyTime_t, d)) {
+// #pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
+    if (!((double)_PyTime_MIN <= d && d < -(double)_PyTime_MIN)) {
 #pragma clang diagnostic pop
         _PyTime_overflow();
         return -1;
@@ -718,7 +736,7 @@ pygettimeofday(_PyTime_t *tp, _Py_clock_info_t *info, int raise)
         info->monotonic = 0;
         info->adjustable = 1;
         if (clock_getres(CLOCK_REALTIME, &res) == 0) {
-            info->resolution = res.tv_sec + res.tv_nsec * 1e-9;
+            info->resolution = (double)res.tv_sec + (double)res.tv_nsec * 1e-9;
         }
         else {
             info->resolution = 1e-9;
