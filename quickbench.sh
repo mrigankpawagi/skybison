@@ -16,4 +16,5 @@ pushd /var/tmp/django_minimal
 # $1 is the path to the skybison directory
 $1/benchmarks/benchmarks/django/setup_django_minimal.sh
 popd
-cd $1 && ./benchmarks/benchmarks/django/benchmark.py --django-dir /var/tmp/django_minimal/ --interpreter ~/static-python/cinder/python --callgrind --callgrind-out-dir $(pwd) --num-requests 10
+# $2 is the path to the python interpreter (executable) to be used
+cd $1 && ./benchmarks/benchmarks/django/benchmark.py --django-dir /var/tmp/django_minimal/ --interpreter $2 --callgrind --callgrind-out-dir $(pwd) --num-requests 10
